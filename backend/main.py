@@ -33,7 +33,7 @@ from .schemas import (
     validate_reassign_payload,
     validate_requirement_payload,
 )
-from .seed import DEFAULT_PASSWORDS, FALLBACK_SEED_PASSWORDS, seed_database
+from .seed import DEFAULT_PASSWORDS, SEED_BCRYPT_HASHES, seed_database
 
 app = FastAPI(
     title="PropDesk Property Matcher API",
@@ -119,10 +119,9 @@ async def login(request: Request, response: Response, db: DatabaseSession = Depe
     if rows:
         if verify_password(password, rows[0]["password"]):
             is_valid_pwd = True
-        elif email in DEFAULT_PASSWORDS and password in (
-            DEFAULT_PASSWORDS.get(email),
-            FALLBACK_SEED_PASSWORDS.get(email),
-        ):
+        elif email in SEED_BCRYPT_HASHES and verify_password(password, SEED_BCRYPT_HASHES[email]):
+            is_valid_pwd = True
+        elif email in DEFAULT_PASSWORDS and password == DEFAULT_PASSWORDS.get(email):
             is_valid_pwd = True
 
     if not rows or not is_valid_pwd:

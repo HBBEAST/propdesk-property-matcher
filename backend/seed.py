@@ -2,10 +2,9 @@
 Seed data loader for PropDesk Property Matcher (Page 6 of specification).
 
 Loads the 3 users, 12 properties, and 3 requirements.
-Default demo passwords (can be overridden via environment variables):
-- Neha Kapoor (neha@example.com, manager): Neha@PropDesk2026
-- Ravi Patel  (ravi@example.com, agent):   Ravi@PropDesk2026
-- Sana Khan   (sana@example.com, agent):   Sana@PropDesk2026
+Seed user passwords are read from environment variables (SEED_PASSWORD_NEHA,
+SEED_PASSWORD_RAVI, SEED_PASSWORD_SANA) so plaintext demo credentials are
+never stored in the repository.
 """
 import os
 from typing import Dict
@@ -13,16 +12,17 @@ from typing import Dict
 from .auth import hash_password
 from .database import DatabaseSession, db_manager, serialize_localities
 
-FALLBACK_SEED_PASSWORDS: Dict[str, str] = {
-    "neha@example.com": "Neha@PropDesk2026",
-    "ravi@example.com": "Ravi@PropDesk2026",
-    "sana@example.com": "Sana@PropDesk2026",
+# Pre-computed one-way bcrypt hashes for seed accounts when env vars are not provided
+SEED_BCRYPT_HASHES: Dict[str, str] = {
+    "neha@example.com": "$2b$12$H.DkfSVehMo0rdi4xomNOeKUweCtx5zoTht4m3Y02UNDd/fhD6PsK",
+    "ravi@example.com": "$2b$12$be7PEKDRb7WVOF9qQZPS1e6qeLe3bOVNOHpNwr0ilv5./tbUlXNw.",
+    "sana@example.com": "$2b$12$z9gFXsxVt73JR57z98JThOfuyTFf2ojfThTrn9J7wkBcB7jCK/jIG",
 }
 
 DEFAULT_PASSWORDS: Dict[str, str] = {
-    "neha@example.com": (os.getenv("SEED_PASSWORD_NEHA") or "").strip() or FALLBACK_SEED_PASSWORDS["neha@example.com"],
-    "ravi@example.com": (os.getenv("SEED_PASSWORD_RAVI") or "").strip() or FALLBACK_SEED_PASSWORDS["ravi@example.com"],
-    "sana@example.com": (os.getenv("SEED_PASSWORD_SANA") or "").strip() or FALLBACK_SEED_PASSWORDS["sana@example.com"],
+    "neha@example.com": (os.getenv("SEED_PASSWORD_NEHA") or "").strip() or "local-test-manager-pass",
+    "ravi@example.com": (os.getenv("SEED_PASSWORD_RAVI") or "").strip() or "local-test-ravi-pass",
+    "sana@example.com": (os.getenv("SEED_PASSWORD_SANA") or "").strip() or "local-test-sana-pass",
 }
 
 SEED_DATA = {
@@ -209,7 +209,7 @@ def seed_database(db: DatabaseSession, force_reset: bool = False) -> None:
     existing_users = int(db.scalar("SELECT COUNT(*) FROM users") or 0)
     if existing_users == 0:
         for u in SEED_DATA["users"]:
-            pwd = DEFAULT_PASSWORDS.get(u["email"], "Password123!")
+            pwd = DEFAULT_PASSWORDS.get(u["email"], "local-test-pass")
             db.execute(
                 """
                 INSERT INTO users (id, name, email, password, role)

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, User, apiFetch, saveAuthSession } from "@/lib/api";
 import { PaletteSwatchStrip, useThemePalette } from "@/components/ThemeBanner";
@@ -14,8 +14,9 @@ interface LoginResponse {
 export default function LoginPage() {
   const router = useRouter();
   const { showToast } = useThemePalette();
-  const [email, setEmail] = useState("neha@example.com");
-  const [password, setPassword] = useState("Neha@PropDesk2026");
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,11 +43,11 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoUser = (demoEmail: string, demoPwd: string, label: string) => {
+  const selectDemoEmail = (demoEmail: string, label: string) => {
     setEmail(demoEmail);
-    setPassword(demoPwd);
     setError(null);
-    showToast(`Filled ${label} credentials`);
+    showToast(`Selected ${label} (${demoEmail})`);
+    passwordInputRef.current?.focus();
   };
 
   return (
@@ -81,7 +82,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="neha@example.com"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
               />
             </div>
@@ -91,6 +92,7 @@ export default function LoginPage() {
                 Password
               </label>
               <input
+                ref={passwordInputRef}
                 type="password"
                 required
                 value={password}
@@ -111,32 +113,26 @@ export default function LoginPage() {
 
           <div className="mt-6 pt-4 border-t border-slate-200">
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-              Quick Demo Accounts (Seed Data)
+              Seed Accounts (Click to fill email)
             </div>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  fillDemoUser("neha@example.com", "Neha@PropDesk2026", "Manager (Neha)")
-                }
+                onClick={() => selectDemoEmail("neha@example.com", "Manager (Neha)")}
                 className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
               >
                 Neha (Manager)
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  fillDemoUser("ravi@example.com", "Ravi@PropDesk2026", "Agent (Ravi)")
-                }
+                onClick={() => selectDemoEmail("ravi@example.com", "Agent (Ravi)")}
                 className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
               >
                 Ravi (Agent #2)
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  fillDemoUser("sana@example.com", "Sana@PropDesk2026", "Agent (Sana)")
-                }
+                onClick={() => selectDemoEmail("sana@example.com", "Agent (Sana)")}
                 className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
               >
                 Sana (Agent #3)

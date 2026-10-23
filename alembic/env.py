@@ -16,6 +16,15 @@ db_url = os.getenv("DATABASE_URL")
 if db_url:
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
+    if db_url.startswith("postgresql://"):
+        try:
+            import psycopg2  # noqa: F401
+        except ImportError:
+            try:
+                import psycopg  # noqa: F401
+                db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+            except ImportError:
+                pass
     config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata if Base is not None else None
