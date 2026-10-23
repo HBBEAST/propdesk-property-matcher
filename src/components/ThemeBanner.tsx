@@ -10,17 +10,13 @@ import {
 
 interface ThemeContextValue {
   theme: ThemeKey;
-  cssUpgraded: boolean;
   setThemeChoice: (t: ThemeKey) => void;
-  setCssMode: (upgraded: boolean) => void;
   showToast: (msg: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: "aurora",
-  cssUpgraded: true,
   setThemeChoice: () => {},
-  setCssMode: () => {},
   showToast: () => {},
 });
 
@@ -30,7 +26,6 @@ export function useThemePalette() {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<ThemeKey>("aurora");
-  const [cssUpgraded, setCssUpgraded] = useState<boolean>(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [showCssInspector, setShowCssInspector] = useState<boolean>(false);
 
@@ -47,45 +42,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const savedTheme = window.localStorage.getItem("propdesk_theme") as ThemeKey | null;
-    const savedUpgraded = window.localStorage.getItem("propdesk_css_upgraded");
     const initialTheme: ThemeKey =
       savedTheme && PALETTE_THEMES[savedTheme] ? savedTheme : "aurora";
-    const initialUpgraded = savedUpgraded === null ? true : savedUpgraded === "true";
 
     setTheme(initialTheme);
-    setCssUpgraded(initialUpgraded);
     document.documentElement.setAttribute("data-theme", initialTheme);
-    document.body.classList.toggle("css-upgraded", initialUpgraded);
+    document.body.classList.add("css-upgraded");
   }, []);
 
   const setThemeChoice = (chosen: ThemeKey) => {
     setTheme(chosen);
-    setCssUpgraded(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("propdesk_theme", chosen);
-      window.localStorage.setItem("propdesk_css_upgraded", "true");
       document.documentElement.setAttribute("data-theme", chosen);
       document.body.classList.add("css-upgraded");
     }
     showToast(`Activated "${PALETTE_THEMES[chosen].shortName}" Palette & Background`);
   };
 
-  const setCssMode = (upgraded: boolean) => {
-    setCssUpgraded(upgraded);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("propdesk_css_upgraded", String(upgraded));
-      document.body.classList.toggle("css-upgraded", upgraded);
-    }
-    showToast(
-      upgraded
-        ? "Showing Upgraded Colorful Aurora CSS"
-        : "Showing Original Flat Baseline CSS"
-    );
-  };
-
   return (
     <ThemeContext.Provider
-      value={{ theme, cssUpgraded, setThemeChoice, setCssMode, showToast }}
+      value={{ theme, setThemeChoice, showToast }}
     >
       {/* Top Preview Control Banner */}
       <div className="no-print bg-slate-900 text-white px-4 py-2.5 border-b border-slate-800 text-xs">
@@ -138,32 +115,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
               >
                 <span className="w-2 h-2 rounded-full bg-gradient-to-r from-rose-400 to-amber-400"></span>
                 Sunset Coral
-              </button>
-            </div>
-
-            {/* Toggle Upgraded vs Original CSS */}
-            <div className="inline-flex rounded-lg bg-slate-800 p-0.5 border border-slate-700">
-              <button
-                type="button"
-                onClick={() => setCssMode(true)}
-                className={
-                  cssUpgraded
-                    ? "px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-600 text-white transition"
-                    : "px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition"
-                }
-              >
-                ✨ Upgraded CSS
-              </button>
-              <button
-                type="button"
-                onClick={() => setCssMode(false)}
-                className={
-                  !cssUpgraded
-                    ? "px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-600 text-white transition"
-                    : "px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition"
-                }
-              >
-                Original CSS
               </button>
             </div>
 
