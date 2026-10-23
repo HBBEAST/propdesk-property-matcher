@@ -3,7 +3,7 @@
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, User, apiFetch, saveAuthSession } from "@/lib/api";
-import { PaletteSwatchStrip, useThemePalette } from "@/components/ThemeBanner";
+import { useThemePalette } from "@/components/ThemeBanner";
 
 interface LoginResponse {
   access_token: string;
@@ -51,93 +51,89 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
-      <PaletteSwatchStrip />
+    <div className="flex-1 flex flex-col justify-center items-center px-4 py-10">
+      <div className="login-card w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8">
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold mb-3 border border-indigo-200">
+            🏢 PropDesk CRM
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">Sign In</h1>
+          <p className="text-sm text-slate-600">
+            Access PropDesk Property Matcher (Indore)
+          </p>
+        </div>
 
-      <div className="flex-1 flex flex-col justify-center items-center px-4 py-10">
-        <div className="login-card w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8">
-          <div className="mb-6">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold mb-3 border border-indigo-200">
-              🏢 PropDesk CRM
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">Sign In</h1>
-            <p className="text-sm text-slate-600">
-              Access PropDesk Property Matcher (Indore)
-            </p>
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="neha@example.com"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+            />
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
-              {error}
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
+              Password
+            </label>
+            <input
+              ref={passwordInputRef}
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+            />
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="neha@example.com"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
-              />
-            </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold text-sm transition shadow"
+          >
+            {loading ? "Signing in..." : "Sign In to Dashboard"}
+          </button>
+        </form>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Password
-              </label>
-              <input
-                ref={passwordInputRef}
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
-              />
-            </div>
-
+        <div className="mt-6 pt-4 border-t border-slate-200">
+          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+            Seed Accounts (Click to fill email)
+          </div>
+          <div className="grid grid-cols-3 gap-2">
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold text-sm transition shadow"
+              type="button"
+              onClick={() => selectDemoEmail("neha@example.com", "Manager (Neha)")}
+              className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
             >
-              {loading ? "Signing in..." : "Sign In to Dashboard"}
+              Neha (Manager)
             </button>
-          </form>
-
-          <div className="mt-6 pt-4 border-t border-slate-200">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-              Seed Accounts (Click to fill email)
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => selectDemoEmail("neha@example.com", "Manager (Neha)")}
-                className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
-              >
-                Neha (Manager)
-              </button>
-              <button
-                type="button"
-                onClick={() => selectDemoEmail("ravi@example.com", "Agent (Ravi)")}
-                className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
-              >
-                Ravi (Agent #2)
-              </button>
-              <button
-                type="button"
-                onClick={() => selectDemoEmail("sana@example.com", "Agent (Sana)")}
-                className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
-              >
-                Sana (Agent #3)
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => selectDemoEmail("ravi@example.com", "Agent (Ravi)")}
+              className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
+            >
+              Ravi (Agent #2)
+            </button>
+            <button
+              type="button"
+              onClick={() => selectDemoEmail("sana@example.com", "Agent (Sana)")}
+              className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition text-center"
+            >
+              Sana (Agent #3)
+            </button>
           </div>
         </div>
       </div>
