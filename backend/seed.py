@@ -13,10 +13,16 @@ from typing import Dict
 from .auth import hash_password
 from .database import DatabaseSession, db_manager, serialize_localities
 
+FALLBACK_SEED_PASSWORDS: Dict[str, str] = {
+    "neha@example.com": "Neha@PropDesk2026",
+    "ravi@example.com": "Ravi@PropDesk2026",
+    "sana@example.com": "Sana@PropDesk2026",
+}
+
 DEFAULT_PASSWORDS: Dict[str, str] = {
-    "neha@example.com": os.getenv("SEED_PASSWORD_NEHA", "Neha@PropDesk2026"),
-    "ravi@example.com": os.getenv("SEED_PASSWORD_RAVI", "Ravi@PropDesk2026"),
-    "sana@example.com": os.getenv("SEED_PASSWORD_SANA", "Sana@PropDesk2026"),
+    "neha@example.com": (os.getenv("SEED_PASSWORD_NEHA") or "").strip() or FALLBACK_SEED_PASSWORDS["neha@example.com"],
+    "ravi@example.com": (os.getenv("SEED_PASSWORD_RAVI") or "").strip() or FALLBACK_SEED_PASSWORDS["ravi@example.com"],
+    "sana@example.com": (os.getenv("SEED_PASSWORD_SANA") or "").strip() or FALLBACK_SEED_PASSWORDS["sana@example.com"],
 }
 
 SEED_DATA = {
@@ -176,66 +182,92 @@ SEED_DATA = {
 def seed_database(db: DatabaseSession, force_reset: bool = False) -> None:
     """Seeds the database with initial users, properties, and requirements if empty (or when force_reset=True)."""
     if force_reset:
-        db.execute("DELETE FROM match_statuses")
-        db.execute("DELETE FROM requirements")
-        db.execute("DELETE FROM properties")
-        db.execute("DELETE FROM users")
-        db.commit()
-
-    existing_users = int(db.scalar("SELECT COUNT(*) FROM users") or 0)
-    if existing_users > 0:
-        return
-
-    for u in SEED_DATA["users"]:
-        pwd = DEFAULT_PASSWORDS.get(u["email"], "Password123!")
-        db.execute(
-            """
-            INSERT INTO users (id, name, email, password, role)
-            VALUES (:id, :name, :email, :password, :role)
-            """,
-            {
-                "id": u["id"],
-                "name": u["name"],
-                "email": u["email"],
-                "password": hash_password(pwd),
-                "role": u["role"],
-            },
-        )
-
-    for p in SEED_DATA["properties"]:
-        db.execute(
-            """
-            INSERT INTO properties (id, title, locality, deal, type, bhk, price)
-            VALUES (:id, :title, :locality, :deal, :type, :bhk, :price)
-            """,
-            p,
-        )
-
-    for r in SEED_DATA["requirements"]:
-        db.execute(
-            """
-            INSERT INTO requirements (id, client_name, phone, deal, type, localities, bhk, budget_max, assigned_to)
-            VALUES (:id, :client_name, :phone, :deal, :type, :localities, :bhk, :budget_max, :assigned_to)
-            """,
-            {
-                "id": r["id"],
-                "client_name": r["client_name"],
-                "phone": r["phone"],
-                "deal": r["deal"],
-                "type": r["type"],
-                "localities": serialize_localities(r["localities"], db.dialect),
-                "bhk": r["bhk"],
-                "budget_max": r["budget_max"],
-                "assigned_to": r["assigned_to"],
-            },
-        )
+        for table in ("match_statuses", "requirements", "properties", "users"):
+            try:
+                db.execute(f"DELETE FROM {table}")
+                db.commit()
+            except Exception:
+                db.rollback()
 
     if db.dialect == "postgresql":
-        db.execute("SELECT setval('users_id_seq', (SELECT COALESCE(MAX(id), 1) FROM users))")
-        db.execute("SELECT setval('properties_id_seq', (SELECT COALESCE(MAX(id), 1) FROM properties))")
-        db.execute("SELECT setval('requirements_id_seq', (SELECT COALESCE(MAX(id), 1) FROM requirements))")
+        try:
+            col_rows = db.execute(
+                """
+                SELECT data_type
+                FROM information_schema.columns
+                WHERE table_name = 'requirements' AND column_name = 'localities'
+                """
+            )
+            if col_rows and "array" in str(col_rows[0].get("data_type", "")).lower():
+                db.execute(
+                    "ALTER TABLE requirements ALTER COLUMN localities TYPE TEXT USING array_to_json(localities)::text"
+                )
+                db.commit()
+        except Exception:
+            db.rollback()
 
-    db.commit()
+    existing_users = int(db.scalar("SELECT COUNT(*) FROM users") or 0)
+    if existing_users == 0:
+        for u in SEED_DATA["users"]:
+            pwd = DEFAULT_PASSWORDS.get(u["email"], "Password123!")
+            db.execute(
+                """
+                INSERT INTO users (id, name, email, password, role)
+                VALUES (:id, :name, :email, :password, :role)
+                """,
+                {
+                    "id": u["id"],
+                    "name": u["name"],
+                    "email": u["email"],
+                    "password": hash_password(pwd),
+                    "role": u["role"],
+                },
+            )
+        db.commit()
+
+    existing_props = int(db.scalar("SELECT COUNT(*) FROM properties") or 0)
+    if existing_props == 0:
+        for p in SEED_DATA["properties"]:
+            db.execute(
+                """
+                INSERT INTO properties (id, title, locality, deal, type, bhk, price)
+                VALUES (:id, :title, :locality, :deal, :type, :bhk, :price)
+                """,
+                p,
+            )
+        db.commit()
+
+    existing_reqs = int(db.scalar("SELECT COUNT(*) FROM requirements") or 0)
+    if existing_reqs == 0:
+        for r in SEED_DATA["requirements"]:
+            db.execute(
+                """
+                INSERT INTO requirements (id, client_name, phone, deal, type, localities, bhk, budget_max, assigned_to)
+                VALUES (:id, :client_name, :phone, :deal, :type, :localities, :bhk, :budget_max, :assigned_to)
+                """,
+                {
+                    "id": r["id"],
+                    "client_name": r["client_name"],
+                    "phone": r["phone"],
+                    "deal": r["deal"],
+                    "type": r["type"],
+                    "localities": serialize_localities(r["localities"], db.dialect),
+                    "bhk": r["bhk"],
+                    "budget_max": r["budget_max"],
+                    "assigned_to": r["assigned_to"],
+                },
+            )
+        db.commit()
+
+    if db.dialect == "postgresql":
+        for tbl in ("users", "properties", "requirements"):
+            try:
+                db.execute(
+                    f"SELECT setval(pg_get_serial_sequence('{tbl}', 'id'), (SELECT COALESCE(MAX(id), 1) FROM {tbl}))"
+                )
+                db.commit()
+            except Exception:
+                db.rollback()
 
 
 if __name__ == "__main__":

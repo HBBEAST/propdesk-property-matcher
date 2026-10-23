@@ -14,7 +14,12 @@ import tempfile
 from typing import Any, Dict, List, Optional, Sequence
 
 DEFAULT_SQLITE_PATH = os.path.join(tempfile.gettempdir(), "propdesk.db")
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_SQLITE_PATH}")
+DATABASE_URL = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or f"sqlite:///{DEFAULT_SQLITE_PATH}"
+).strip()
+
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
@@ -146,15 +151,29 @@ class DatabaseManager:
 
         if db_url.startswith("sqlite:///"):
             raw_path = db_url[len("sqlite:///"):]
-            # Place relative sqlite files in system temp directory if current mount lacks flock support
             if raw_path.startswith("./") or not os.path.isabs(raw_path):
                 self._sqlite_path = os.path.join(tempfile.gettempdir(), os.path.basename(raw_path))
             else:
                 self._sqlite_path = raw_path
 
         if HAS_SQLALCHEMY:
+            engine_url = db_url
+            if engine_url.startswith("postgresql://"):
+                try:
+                    import psycopg2  # noqa: F401
+                except ImportError:
+                    try:
+                        import psycopg  # noqa: F401
+                        engine_url = engine_url.replace("postgresql://", "postgresql+psycopg://", 1)
+                    except ImportError:
+                        pass
             connect_args = {"check_same_thread": False} if self.dialect == "sqlite" else {}
-            self._sa_engine = create_engine(db_url, connect_args=connect_args, future=True)
+            self._sa_engine = create_engine(
+                engine_url,
+                connect_args=connect_args,
+                pool_pre_ping=True,
+                future=True,
+            )
             self._sa_session_factory = sessionmaker(bind=self._sa_engine, autoflush=False, autocommit=False)
 
     def create_session(self) -> DatabaseSession:
@@ -173,8 +192,11 @@ class DatabaseManager:
                 stmt = ddl
                 if sess.dialect == "sqlite":
                     stmt = stmt.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
-                sess.execute(stmt)
-            sess.commit()
+                try:
+                    sess.execute(stmt)
+                    sess.commit()
+                except Exception:
+                    sess.rollback()
         finally:
             sess.close()
 
@@ -182,8 +204,11 @@ class DatabaseManager:
         sess = self.create_session()
         try:
             for table in ("match_statuses", "requirements", "properties", "users"):
-                sess.execute(f"DROP TABLE IF EXISTS {table}")
-            sess.commit()
+                try:
+                    sess.execute(f"DROP TABLE IF EXISTS {table}")
+                    sess.commit()
+                except Exception:
+                    sess.rollback()
         finally:
             sess.close()
         self.init_schema()
