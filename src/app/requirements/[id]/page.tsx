@@ -14,12 +14,14 @@ import {
   getStoredUser,
 } from "@/lib/api";
 import { formatIndianPrice } from "@/lib/format";
+import { useThemePalette } from "@/components/ThemeBanner";
 
 const PAGE_SIZE = 10;
 
 export default function RequirementDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { showToast } = useThemePalette();
   const reqId = Number(params?.id);
 
   const [user, setUser] = useState<User | null>(null);
@@ -88,6 +90,7 @@ export default function RequirementDetailPage() {
         method: "PUT",
         body: JSON.stringify({ status: "shared" }),
       });
+      showToast(`Marked Property #${propertyId} as Shared with Client`);
       await loadRequirementAndMatches(offset);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to mark match as shared");
@@ -110,6 +113,7 @@ export default function RequirementDetailPage() {
           reason: rejectReason,
         }),
       });
+      showToast(`Rejected Property #${rejectingPropertyId} from matches`);
       setRejectingPropertyId(null);
       setRejectReason("");
       await loadRequirementAndMatches(offset);
@@ -129,10 +133,20 @@ export default function RequirementDetailPage() {
       <Navbar user={user} />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
-        <div className="mb-4">
-          <Link href="/requirements" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+          <Link href="/requirements" className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">
             ← Back to Requirements
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              showToast("Opening print view (@media print hides navbar & controls cleanly)");
+              if (typeof window !== "undefined") window.print();
+            }}
+            className="no-print px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition"
+          >
+            🖨️ Print Client Match Sheet
+          </button>
         </div>
 
         {notFound ? (
@@ -160,7 +174,7 @@ export default function RequirementDetailPage() {
                   <div>
                     <div className="flex items-center gap-2.5 mb-1">
                       <h1 className="text-xl font-bold text-slate-900">{requirement.client_name}</h1>
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs font-medium">
+                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-xs font-semibold">
                         Req #{requirement.id}
                       </span>
                     </div>
@@ -174,7 +188,7 @@ export default function RequirementDetailPage() {
 
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200">
-                      <span className="text-xs text-slate-500 block">Deal & Type</span>
+                      <span className="text-xs text-slate-500 block">Deal &amp; Type</span>
                       <span className="font-semibold text-slate-900 capitalize">
                         {requirement.deal} • {requirement.type}{" "}
                         {requirement.bhk !== null ? `(${requirement.bhk} BHK)` : "(Any BHK)"}
@@ -182,7 +196,7 @@ export default function RequirementDetailPage() {
                     </div>
                     <div className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200">
                       <span className="text-xs text-slate-500 block">Max Budget</span>
-                      <span className="font-semibold text-indigo-700">
+                      <span className="font-semibold text-indigo-600">
                         {formatIndianPrice(requirement.budget_max, requirement.deal)}
                       </span>
                     </div>
@@ -194,7 +208,7 @@ export default function RequirementDetailPage() {
                   {requirement.localities.map((loc, idx) => (
                     <span
                       key={idx}
-                      className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium"
+                      className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-200"
                     >
                       {loc}
                     </span>
@@ -209,7 +223,7 @@ export default function RequirementDetailPage() {
               )}
 
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-bold text-slate-900">Matching Properties ({total})</h2>
+                <h2 className="text-lg font-bold text-slate-900">Matching Properties ({total})</h2>
                 <span className="text-xs text-slate-500">
                   Sorted by score (highest first), then price (lowest first)
                 </span>
@@ -237,6 +251,15 @@ export default function RequirementDetailPage() {
                     >
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              m.score >= 85
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            Score: {m.score}%
+                          </span>
                           <span className="font-bold text-slate-900 text-base">{m.property.title}</span>
                           <span className="text-xs text-slate-400">(Property #{m.property.id})</span>
                           {m.status === "shared" && (
@@ -267,17 +290,20 @@ export default function RequirementDetailPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 pt-1">
-                          <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            Score: {m.score}
-                          </span>
-                          {m.flags.map((flag) => (
-                            <span
-                              key={flag}
-                              className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-mono"
-                            >
-                              {flag}
+                          {m.flags.length === 0 ? (
+                            <span className="text-xs text-emerald-600 font-semibold">
+                              ✓ Perfect Match (No penalties)
                             </span>
-                          ))}
+                          ) : (
+                            m.flags.map((flag) => (
+                              <span
+                                key={flag}
+                                className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-mono"
+                              >
+                                {flag}
+                              </span>
+                            ))
+                          )}
                         </div>
                       </div>
 

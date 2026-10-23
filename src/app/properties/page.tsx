@@ -59,8 +59,21 @@ export default function PropertiesPage() {
       <Navbar user={user} />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-slate-900">Properties Inventory ({total})</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Properties Inventory ({total})</h1>
+            <p className="text-sm text-slate-500">
+              Available property listings database in Indore
+            </p>
+          </div>
+          {user?.role === "manager" && (
+            <Link
+              href="/import"
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow transition"
+            >
+              Import CSV
+            </Link>
+          )}
         </div>
 
         {loading ? (
@@ -69,36 +82,67 @@ export default function PropertiesPage() {
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-                  <th className="py-3 px-4">ID</th>
-                  <th className="py-3 px-4">Title</th>
-                  <th className="py-3 px-4">Locality</th>
-                  <th className="py-3 px-4">Deal / Type</th>
-                  <th className="py-3 px-4">BHK</th>
-                  <th className="py-3 px-4">Price</th>
-                  <th className="py-3 px-4 text-right">Reverse Match</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {properties.map((p) => (
-                  <tr key={p.id}>
-                    <td className="py-3 px-4 font-mono text-xs">#{p.id}</td>
-                    <td className="py-3 px-4 font-semibold">{p.title}</td>
-                    <td className="py-3 px-4">{p.locality.trim()}</td>
-                    <td className="py-3 px-4 capitalize">{p.deal} • {p.type}</td>
-                    <td className="py-3 px-4">{p.bhk !== null ? `${p.bhk} BHK` : "—"}</td>
-                    <td className="py-3 px-4 font-semibold">{formatIndianPrice(p.price, p.deal)}</td>
-                    <td className="py-3 px-4 text-right">
-                      <Link href={`/properties/${p.id}`} className="text-xs font-medium text-indigo-600">
-                        Matching Requirements →
-                      </Link>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                    <th className="py-3 px-4">ID</th>
+                    <th className="py-3 px-4">Title</th>
+                    <th className="py-3 px-4">Locality</th>
+                    <th className="py-3 px-4">Deal / Type</th>
+                    <th className="py-3 px-4">BHK</th>
+                    <th className="py-3 px-4">Price</th>
+                    <th className="py-3 px-4 text-right">Reverse Match</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {properties.map((p) => (
+                    <tr key={p.id}>
+                      <td className="py-3.5 px-4 font-mono text-xs text-slate-500">#{p.id}</td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-900">{p.title}</td>
+                      <td className="py-3.5 px-4 text-slate-700">{p.locality.trim()}</td>
+                      <td className="py-3.5 px-4 capitalize text-slate-700">{p.deal} • {p.type}</td>
+                      <td className="py-3.5 px-4 text-slate-700">{p.bhk !== null ? `${p.bhk} BHK` : "—"}</td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-900">
+                        {formatIndianPrice(p.price, p.deal)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Link
+                          href={`/properties/${p.id}`}
+                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                        >
+                          Find Buyers →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {total > PAGE_SIZE && (
+              <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                <span>
+                  Showing {Math.min(offset + 1, total)}–{Math.min(offset + properties.length, total)} of {total}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={offset === 0}
+                    onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                    className="px-3 py-1 rounded border border-slate-300 bg-white disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    disabled={offset + PAGE_SIZE >= total}
+                    onClick={() => setOffset(offset + PAGE_SIZE)}
+                    className="px-3 py-1 rounded border border-slate-300 bg-white disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
